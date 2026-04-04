@@ -90,6 +90,60 @@ Also save a raw `.pcap` file to open in the Wireshark GUI:
 
 Stop any capture with `Ctrl+C`.
 
+## Troubleshooting
+
+**Verify the proxy is running:**
+
+```bash
+lsof -i :19472
+```
+
+You should see `mitmdump` listed. If not, the script isn't running.
+
+**Test the proxy directly with curl:**
+
+```bash
+curl --cacert ~/.mitmproxy/mitmproxy-ca-cert.pem \
+     -x http://localhost:19472 \
+     https://httpbin.org/get
+```
+
+If this returns JSON, the proxy is working correctly. Without `--cacert`, curl will reject mitmproxy's certificate — that's expected.
+
+**`~` doesn't expand in env vars** — use `$HOME` instead:
+
+```bash
+# Wrong
+NODE_EXTRA_CA_CERTS=~/.mitmproxy/mitmproxy-ca-cert.pem node app.js
+
+# Correct
+NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem node app.js
+```
+
+**The proxy works but nothing appears from your Node app:**
+
+Some HTTP clients inside Node (notably `undici` and native `fetch`, used by the OpenAI SDK v4, LangChain, and others) do not respect `HTTPS_PROXY`. To force all outbound traffic through the proxy regardless of which HTTP client is used, install `global-agent`:
+
+```bash
+npm install global-agent
+```
+
+Then run your app with:
+
+```bash
+GLOBAL_AGENT_HTTPS_PROXY=http://localhost:19472 \
+NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem \
+node -r global-agent/bootstrap your-app.js
+```
+
+If you use `npm run dev` or a similar script, prepend the env vars the same way — just replace `node your-app.js` with however you normally start the app:
+
+```bash
+GLOBAL_AGENT_HTTPS_PROXY=http://localhost:19472 \
+NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem \
+node -r global-agent/bootstrap node_modules/.bin/concurrently ...
+```
+
 ## Output format
 
 **mitmproxy mode** (`-m`): human-readable flow log — method, URL, status code, response size, timing.
