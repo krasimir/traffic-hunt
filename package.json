@@ -1,0 +1,9 @@
+{
+  "name": "traffic-hunt",
+  "version": "1.0.0",
+  "description": "Network traffic capture and HTTPS interception tool",
+  "private": true,
+  "dependencies": {
+    "global-agent": "^4.1.3"
+  }
+}

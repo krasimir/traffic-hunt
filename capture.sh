@@ -7,6 +7,8 @@
 set -euo pipefail
 
 MITM_PORT=19472
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BOOTSTRAP="$SCRIPT_DIR/bootstrap.js"
 
 # ── check for -m/--mitm before sudo so we can skip root for that mode ─────────
 MITM_MODE=true
@@ -90,9 +92,10 @@ if [[ "$MITM_MODE" == true ]]; then
   echo "████████████████████████████████████████████████████████████"
   echo "  ACTION REQUIRED — run your app with these env vars set:"
   echo ""
-  echo "  HTTPS_PROXY=http://localhost:$MITM_PORT \\"
-  echo "  NODE_EXTRA_CA_CERTS=~/.mitmproxy/mitmproxy-ca-cert.pem \\"
-  echo "  node your-app.js"
+  echo "  GLOBAL_AGENT_HTTPS_PROXY=http://localhost:$MITM_PORT \\"
+  echo "  NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem \\"
+  echo "  NODE_OPTIONS=\"-r $BOOTSTRAP\" \\"
+  echo "  npm run dev"
   echo ""
   echo "  First time? The cert is generated on first mitmdump run."
   echo "  If Node rejects the cert, run mitmdump once first, then"

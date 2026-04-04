@@ -32,17 +32,22 @@ Because these calls are HTTPS, the traffic is encrypted and tshark cannot decode
 
 The script will print the proxy address and the exact env vars you need.
 
-**Step 2** — in a separate terminal, run your Node app with those env vars:
+**Step 2** — in a separate terminal, run your Node app with:
 
 ```bash
-HTTPS_PROXY=http://localhost:19472 \
-NODE_EXTRA_CA_CERTS=~/.mitmproxy/mitmproxy-ca-cert.pem \
-node your-app.js
+GLOBAL_AGENT_HTTPS_PROXY=http://localhost:19472 \
+NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem \
+NODE_OPTIONS="-r /path/to/traffic-hunt/bootstrap.js" \
+npm run dev
 ```
 
-`HTTPS_PROXY` routes all outbound HTTPS calls through mitmproxy. `NODE_EXTRA_CA_CERTS` tells Node to trust mitmproxy's certificate so it doesn't reject the intercepted TLS connection.
+The script prints the exact command with the correct path filled in — just copy it from the terminal output.
 
-> First run: the mitmproxy CA cert is generated the first time `mitmdump` runs. If Node complains about an unknown certificate, start the script once, let it run for a second, then stop it and try again — the cert file will now exist.
+`NODE_OPTIONS` is passed through by npm to every Node process it spawns, so this works regardless of how your start script is defined. `global-agent` patches Node's HTTP stack at startup so all outbound traffic is proxied — including calls from SDKs like OpenAI v4 and LangChain that use `undici` internally and ignore `HTTPS_PROXY`.
+
+`NODE_EXTRA_CA_CERTS` tells Node to trust mitmproxy's certificate so it doesn't reject the intercepted TLS connection.
+
+> First run: the mitmproxy CA cert is generated the first time `mitmdump` runs. If Node complains about an unknown certificate, start the script once, stop it, then re-run your app — the cert file will now exist at `~/.mitmproxy/mitmproxy-ca-cert.pem`.
 
 All requests and responses appear live in the terminal and are written to the log file.
 
@@ -122,27 +127,7 @@ NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem node app.js
 
 **The proxy works but nothing appears from your Node app:**
 
-Some HTTP clients inside Node (notably `undici` and native `fetch`, used by the OpenAI SDK v4, LangChain, and others) do not respect `HTTPS_PROXY`. To force all outbound traffic through the proxy regardless of which HTTP client is used, install `global-agent`:
-
-```bash
-npm install global-agent
-```
-
-Then run your app with:
-
-```bash
-GLOBAL_AGENT_HTTPS_PROXY=http://localhost:19472 \
-NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem \
-node -r global-agent/bootstrap your-app.js
-```
-
-If you use `npm run dev` or a similar script, prepend the env vars the same way — just replace `node your-app.js` with however you normally start the app:
-
-```bash
-GLOBAL_AGENT_HTTPS_PROXY=http://localhost:19472 \
-NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem \
-node -r global-agent/bootstrap node_modules/.bin/concurrently ...
-```
+Some HTTP clients inside Node (notably `undici` and native `fetch`, used by the OpenAI SDK v4, LangChain, and others) do not respect `HTTPS_PROXY`. The script handles this automatically via `bootstrap.js` and `global-agent` — make sure you are copying the exact command printed in the terminal after starting the script.
 
 ## Output format
 
