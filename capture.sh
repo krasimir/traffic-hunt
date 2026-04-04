@@ -103,7 +103,7 @@ if [[ "$MITM_MODE" == true ]]; then
   echo "████████████████████████████████████████████████████████████"
   echo ""
 
-  mitmdump --listen-port "$MITM_PORT" --flow-detail 2 2>&1 | tee "$OUTPUT_FILE"
+  mitmdump --listen-port "$MITM_PORT" --flow-detail 3 2>&1 | tee "$OUTPUT_FILE"
   exit 0
 fi
 
