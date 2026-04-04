@@ -1,6 +1,6 @@
 # traffic-hunt
 
-A script for monitoring network traffic from locally running apps — particularly useful for inspecting what a Node.js app sends to third-party APIs (LLMs, payment providers, external services, etc.).
+A script for monitoring network traffic from locally running apps — particularly useful for inspecting what a Node.js app sends to third-party APIs (LLMs, payment providers, external services, etc.). Or at least that's what I've built it for :smile:.
 
 ## Install dependencies
 
