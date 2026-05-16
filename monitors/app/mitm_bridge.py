@@ -53,8 +53,8 @@ class NodeBridge:
         loader.add_option(
             name="payload_log",
             typespec=str,
-            default="vscode-traffic.jsonl",
-            help="Path where the Node payload logger writes JSONL output.",
+            default="app-traffic.json",
+            help="Path where the Node payload logger writes JSON output.",
         )
         loader.add_option(
             name="node_logger",
@@ -62,13 +62,19 @@ class NodeBridge:
             default="",
             help="Path to payload_logger.js.",
         )
+        loader.add_option(
+            name="excluded_hosts",
+            typespec=str,
+            default="",
+            help="Comma-separated hosts passed through to the Node payload logger.",
+        )
 
     def running(self):
         if not ctx.options.node_logger:
             raise RuntimeError("node_logger option is required")
 
         self.process = subprocess.Popen(
-            ["node", ctx.options.node_logger, ctx.options.payload_log],
+            ["node", ctx.options.node_logger, ctx.options.payload_log, ctx.options.excluded_hosts],
             stdin=subprocess.PIPE,
             text=True,
             encoding="utf-8",

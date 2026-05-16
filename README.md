@@ -3,7 +3,7 @@
 Traffic monitoring experiments for inspecting outbound requests from local development tools and apps.
 
 - `monitors/node-process` - capture requests from a Node.js process by running it through a local mitmproxy proxy.
-- `monitors/app-vscode` - workspace for app-level capture, starting with VS Code and processes related to it.
+- `monitors/app` - capture requests from a launched app and processes that inherit its proxy environment.
 
 ## Dependencies
 
@@ -33,11 +33,11 @@ Use this when you control how the Node app starts and can inject environment var
 
 See [monitors/node-process/README.md](monitors/node-process/README.md) for full usage.
 
-### App / VS Code
+### App
 
-Use this area for capturing traffic authored by an app and its related processes, starting with VS Code.
+Use this when you want to launch an app through a local proxy and inspect the HTTP/HTTPS payloads it sends. The README includes VS Code as an example.
 
-See [monitors/app-vscode/README.md](monitors/app-vscode/README.md).
+See [monitors/app/README.md](monitors/app/README.md).
 
 ## Security
 

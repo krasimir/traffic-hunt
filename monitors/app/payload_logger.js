@@ -3,7 +3,34 @@
 const fs = require('node:fs');
 const readline = require('node:readline');
 
-const outputFile = process.argv[2] || 'vscode-traffic.jsonl';
+const outputFile = process.argv[2] || 'app-traffic.json';
+const excludedHosts = splitHosts(process.argv[3] || '');
+let entries = [];
+
+function writeJsonFile() {
+  fs.writeFileSync(outputFile, `${JSON.stringify(entries, null, 2)}\n`, 'utf8');
+}
+
+function splitHosts(value) {
+  return value
+    .split(',')
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function matchesHost(host, patterns) {
+  const normalizedHost = String(host || '').toLowerCase().replace(/\.$/, '');
+
+  return patterns.some((pattern) => {
+    const normalizedPattern = pattern.replace(/\.$/, '');
+
+    if (normalizedPattern.startsWith('*.')) {
+      return normalizedHost.endsWith(normalizedPattern.slice(1));
+    }
+
+    return normalizedHost === normalizedPattern;
+  });
+}
 
 function decodeBody(payload) {
   const raw = Buffer.from(payload?.body_base64 || '', 'base64');
@@ -91,13 +118,20 @@ input.on('line', (line) => {
   try {
     const event = JSON.parse(line);
     const entry = toLogEntry(event);
-    fs.appendFileSync(outputFile, `${JSON.stringify(entry)}\n`, 'utf8');
+    if (matchesHost(entry.request?.host, excludedHosts)) {
+      return;
+    }
+    entries.push(entry);
+    writeJsonFile();
   } catch (error) {
     const entry = {
       captured_at: new Date().toISOString(),
       error: `payload_logger.js failed: ${error.message}`,
       raw_line: line,
     };
-    fs.appendFileSync(outputFile, `${JSON.stringify(entry)}\n`, 'utf8');
+    entries.push(entry);
+    writeJsonFile();
   }
 });
+
+writeJsonFile();
