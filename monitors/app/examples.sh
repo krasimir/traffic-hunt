@@ -9,5 +9,6 @@
   --exclude-host '*.googleapis.com' \
   --exclude-host '*.microsoft.com' \
   --exclude-host '*.azure.com' \
+  --exclude-host '*.mhutchie.com' \
   -o vscode-traffic.json \
   -- /Users/krasimir/Work/Krasimir/zmey

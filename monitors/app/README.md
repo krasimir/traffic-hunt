@@ -88,6 +88,20 @@ This captures traffic that honors the proxy settings inherited from the launched
 
 Generated logs can contain API keys, cookies, prompts, request bodies, and response bodies in plaintext. Do not commit them.
 
+## Explorer
+
+Use the local explorer to inspect generated JSON captures in a browser:
+
+```bash
+cd monitors/app/explorer
+npm install
+npm start
+```
+
+Then open `http://localhost:3499` and choose a capture file. The upload is read in memory and is not saved to disk.
+
+See [explorer/README.md](explorer/README.md).
+
 ## Troubleshooting
 
 If the JSON file stays as `[]` and the mitmproxy log only shows startup lines like `HTTP(S) proxy listening`, no traffic reached the proxy. For VS Code, the usual cause is an already-running VS Code process. Run with `--electron-user-data-dir temp`, or fully quit VS Code before starting capture.
