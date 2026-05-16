@@ -1,2 +1,5 @@
 *.log
+*.jsonl
+*.pcap
+*.pcapng
 node_modules
