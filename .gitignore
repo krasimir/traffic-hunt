@@ -1,2 +1,9 @@
 *.log
+app-traffic.json
+app-traffic-*.json
+vscode-traffic.json
+vscode-traffic-*.json
+*.jsonl
+*.pcap
+*.pcapng
 node_modules

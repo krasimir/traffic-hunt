@@ -1,0 +1,13 @@
+{
+  "name": "traffic-hunt-app-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Small JSON explorer for traffic-hunt app monitor captures",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.3"
+  }
+}

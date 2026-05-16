@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# traffic-hunt/capture.sh — capture network traffic and log to file
+# traffic-hunt/monitors/node-process/capture.sh — capture Node process traffic and log to file
 # Usage: ./capture.sh [options]
 # Requires: tcpdump (built-in macOS) or tshark (brew install wireshark)
 #           mitmproxy for HTTPS interception (brew install mitmproxy)
@@ -46,12 +46,11 @@ Options:
   -h, --help      Show this help
 
 Examples:
-  $(basename "$0")                              # capture all TCP traffic
-  $(basename "$0") -p http -o app.log           # HTTP ports only
-  $(basename "$0") -P 5000,9000 -o app.log      # add extra ports
-  $(basename "$0") -v -o debug.log              # verbose: full ASCII payloads
-  $(basename "$0") -r raw.pcap -o traffic.log   # also save .pcap for Wireshark
-  $(basename "$0") -m -o llm.log                # intercept HTTPS (e.g. LLM API calls)
+  $(basename "$0") -o llm.log                   # intercept HTTPS with mitmproxy
+  $(basename "$0") --no-mitm -p http -o app.log # HTTP ports only
+  $(basename "$0") --no-mitm -P 5000,9000 -o app.log
+  $(basename "$0") --no-mitm -v -o debug.log    # verbose tcpdump fallback
+  $(basename "$0") --no-mitm -r raw.pcap -o traffic.log
 EOF
   exit 0
 }

@@ -1,0 +1,14 @@
+./monitors/app/capture.sh \
+  --app "/Applications/Visual Studio Code.app" \
+  --electron \
+  --electron-user-data-dir temp \
+  --exclude-host '*.gstatic.com' \
+  --exclude-host '*.vscode-cdn.net' \
+  --exclude-host '*.visualstudio.com' \
+  --exclude-host '*.exp-tas.com' \
+  --exclude-host '*.googleapis.com' \
+  --exclude-host '*.microsoft.com' \
+  --exclude-host '*.azure.com' \
+  --exclude-host '*.mhutchie.com' \
+  -o vscode-traffic.json \
+  -- /Users/krasimir/Work/Krasimir/zmey

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Traffic Hunt Explorer</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>Traffic Hunt Explorer</h1>
+          <p>Open a capture JSON file and inspect request and response payloads.</p>
+        </div>
+      </header>
+
+      <section class="upload-panel">
+        <form id="upload-form">
+          <label class="file-picker">
+            <span>Capture JSON</span>
+            <input id="capture-file" name="capture" type="file" accept="application/json,.json" required>
+          </label>
+          <button type="submit">Upload</button>
+        </form>
+        <div id="status" class="status" role="status"></div>
+      </section>
+
+      <section class="summary" id="summary" hidden></section>
+      <section class="entries" id="entries"></section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
