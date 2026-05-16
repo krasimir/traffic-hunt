@@ -2,7 +2,13 @@ const form = document.querySelector('#upload-form');
 const fileInput = document.querySelector('#capture-file');
 const statusEl = document.querySelector('#status');
 const summaryEl = document.querySelector('#summary');
+const filterPanelEl = document.querySelector('#filter-panel');
+const urlFilterEl = document.querySelector('#url-filter');
 const entriesEl = document.querySelector('#entries');
+const state = {
+  fileName: '',
+  entries: [],
+};
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -31,6 +37,152 @@ function formatHeaders(headers) {
   }
 
   return headers.map(([name, value]) => `${name}: ${value}`).join('\n');
+}
+
+function headerValue(headers, name) {
+  if (!Array.isArray(headers)) {
+    return '';
+  }
+
+  const match = headers.find(([headerName]) => String(headerName).toLowerCase() === name.toLowerCase());
+  return match ? String(match[1]) : '';
+}
+
+function contentType(message) {
+  return String(message?.content_type || headerValue(message?.headers, 'content-type')).toLowerCase();
+}
+
+function isEventStream(message) {
+  return contentType(message).includes('text/event-stream');
+}
+
+function parseSseEvents(body) {
+  if (typeof body !== 'string' || body.trim() === '') {
+    return [];
+  }
+
+  return body
+    .split(/\r?\n\r?\n/)
+    .map((frame) => {
+      const event = { event: 'message', data: [] };
+
+      frame.split(/\r?\n/).forEach((line) => {
+        if (line.startsWith('event:')) {
+          event.event = line.slice(6).trim();
+        } else if (line.startsWith('data:')) {
+          event.data.push(line.slice(5).trimStart());
+        }
+      });
+
+      return {
+        event: event.event,
+        data: event.data.join('\n'),
+      };
+    })
+    .filter((event) => event.data && event.data !== '[DONE]');
+}
+
+function extractStreamingText(payload) {
+  const parts = [];
+
+  if (Array.isArray(payload?.choices)) {
+    payload.choices.forEach((choice) => {
+      if (typeof choice?.delta?.content === 'string') {
+        parts.push(choice.delta.content);
+      }
+      if (typeof choice?.text === 'string') {
+        parts.push(choice.text);
+      }
+      if (typeof choice?.message?.content === 'string') {
+        parts.push(choice.message.content);
+      }
+    });
+  }
+
+  if (typeof payload?.delta?.text === 'string') {
+    parts.push(payload.delta.text);
+  }
+
+  if (typeof payload?.delta?.thinking === 'string') {
+    parts.push(payload.delta.thinking);
+  }
+
+  if (typeof payload?.content_block?.text === 'string') {
+    parts.push(payload.content_block.text);
+  }
+
+  return parts.join('');
+}
+
+function extractToolCall(payload, toolsByIndex) {
+  if (payload?.type === 'content_block_start' && payload?.content_block?.type === 'tool_use') {
+    const index = String(payload.index);
+    toolsByIndex.set(index, {
+      id: payload.content_block.id || '',
+      name: payload.content_block.name || 'tool',
+      inputText: '',
+      input: payload.content_block.input || null,
+    });
+    return;
+  }
+
+  if (payload?.type === 'content_block_delta' && payload?.delta?.type === 'input_json_delta') {
+    const index = String(payload.index);
+    const existing = toolsByIndex.get(index) || {
+      id: '',
+      name: 'tool',
+      inputText: '',
+      input: null,
+    };
+
+    existing.inputText += payload.delta.partial_json || '';
+    toolsByIndex.set(index, existing);
+  }
+}
+
+function finalizeToolCalls(toolsByIndex) {
+  return Array.from(toolsByIndex.values()).map((tool) => {
+    if (tool.inputText) {
+      try {
+        tool.input = JSON.parse(tool.inputText);
+      } catch {
+        tool.input = tool.inputText;
+      }
+    }
+
+    return tool;
+  });
+}
+
+function streamingSummary(message) {
+  const summary = {
+    text: '',
+    tools: [],
+  };
+
+  if (!isEventStream(message)) {
+    return summary;
+  }
+
+  const toolsByIndex = new Map();
+  const textParts = [];
+
+  parseSseEvents(message.body).forEach((event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      const streamedText = extractStreamingText(payload);
+      if (streamedText) {
+        textParts.push(streamedText);
+      }
+      extractToolCall(payload, toolsByIndex);
+    } catch {
+      // Ignore non-JSON SSE frames in the readable summary.
+    }
+  });
+
+  summary.text = textParts.join('');
+  summary.tools = finalizeToolCalls(toolsByIndex);
+  return summary;
 }
 
 function byteLength(value) {
@@ -78,6 +230,56 @@ function createPre(content) {
   const pre = document.createElement('pre');
   pre.textContent = content;
   return pre;
+}
+
+function createTextBlock(title, content) {
+  const block = document.createElement('div');
+  block.className = 'payload-block payload-block-wide';
+
+  const heading = document.createElement('div');
+  heading.className = 'section-title';
+  heading.textContent = title;
+
+  block.append(heading, createPre(content || '(empty)'));
+  return block;
+}
+
+function createToolCallsBlock(tools) {
+  const block = document.createElement('div');
+  block.className = 'payload-block payload-block-wide';
+
+  const heading = document.createElement('div');
+  heading.className = 'section-title';
+  heading.textContent = `Tool Usage (${tools.length})`;
+
+  const list = document.createElement('div');
+  list.className = 'tool-list';
+
+  tools.forEach((tool, index) => {
+    const details = document.createElement('details');
+    details.className = 'tool-call';
+    details.open = index === 0;
+
+    const summary = document.createElement('summary');
+    const name = document.createElement('span');
+    name.className = 'tool-name';
+    name.textContent = tool.name;
+
+    const id = document.createElement('span');
+    id.className = 'tool-id';
+    id.textContent = tool.id;
+    summary.append(name, id);
+
+    const input = document.createElement('div');
+    input.className = 'tool-input';
+    input.append(createPayloadViewer(tool.input));
+
+    details.append(summary, input);
+    list.append(details);
+  });
+
+  block.append(heading, list);
+  return block;
 }
 
 function valueType(value) {
@@ -205,17 +407,27 @@ function createPayloadBlock(title, payload, sizeBytes = null) {
 function renderEntries(fileName, entries) {
   entriesEl.textContent = '';
   summaryEl.hidden = false;
-  summaryEl.textContent = `${fileName}: ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`;
+  filterPanelEl.hidden = false;
 
-  if (entries.length === 0) {
+  const query = urlFilterEl.value.trim().toLowerCase();
+  const visibleEntries = query
+    ? entries.filter((entry) => String(entry.request?.url || '').toLowerCase().includes(query))
+    : entries;
+
+  const suffix = query ? `, ${visibleEntries.length} matching` : '';
+  summaryEl.textContent = `${fileName}: ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}${suffix}`;
+
+  if (visibleEntries.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty';
-    empty.textContent = 'The capture contains no entries.';
+    empty.textContent = entries.length === 0
+      ? 'The capture contains no entries.'
+      : 'No entries match the current URL filter.';
     entriesEl.append(empty);
     return;
   }
 
-  entries.forEach((entry, index) => {
+  visibleEntries.forEach((entry, index) => {
     const request = entry.request || {};
     const response = entry.response || {};
 
@@ -235,7 +447,8 @@ function renderEntries(fileName, entries) {
 
     const meta = document.createElement('span');
     meta.className = 'meta';
-    meta.textContent = `#${index + 1} ${text(response.status_code, 'no status')}`;
+    const originalIndex = entries.indexOf(entry) + 1;
+    meta.textContent = `#${originalIndex || index + 1} ${text(response.status_code, 'no status')}`;
 
     summary.append(method, url, meta);
 
@@ -248,6 +461,14 @@ function renderEntries(fileName, entries) {
       createPayloadBlock('Request Payload', request.body, payloadSize(request)),
       createPayloadBlock('Response Payload', response.body, payloadSize(response)),
     );
+
+    const stream = streamingSummary(response);
+    if (stream.text) {
+      payloadGrid.append(createTextBlock('Streaming Result', stream.text));
+    }
+    if (stream.tools.length > 0) {
+      payloadGrid.append(createToolCallsBlock(stream.tools));
+    }
 
     const headerGrid = document.createElement('div');
     headerGrid.className = 'payload-grid';
@@ -292,13 +513,23 @@ form.addEventListener('submit', async (event) => {
       throw new Error(result.error || 'Upload failed.');
     }
 
-    renderEntries(result.fileName, result.entries);
+    state.fileName = result.fileName;
+    state.entries = result.entries;
+    urlFilterEl.value = '';
+    renderEntries(state.fileName, state.entries);
     setStatus('Loaded.');
   } catch (error) {
     summaryEl.hidden = true;
+    filterPanelEl.hidden = true;
     entriesEl.textContent = '';
     setStatus(error.message, true);
   } finally {
     submitButton.disabled = false;
+  }
+});
+
+urlFilterEl.addEventListener('input', () => {
+  if (state.entries.length > 0) {
+    renderEntries(state.fileName, state.entries);
   }
 });
